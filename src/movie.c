@@ -17,7 +17,7 @@ movie_t* movie_new(unsigned int cols, unsigned int rows) {
     // Inicializamos los asientos
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            seat_t* seat = &seats[(i * rows) + j];
+            seat_t* seat = &seats[(i * cols) + j];
 
             seat->col      = j;
             seat->row      = i;

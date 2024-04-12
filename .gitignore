@@ -1,0 +1,11 @@
+.DS_Store
+
+# C output objects
+*.o
+movies
+
+# Compilation database
+compile_commands.json
+
+# clangd
+.cache/

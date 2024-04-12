@@ -1,0 +1,46 @@
+name: CI principal
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        rows: [10, 100, 1000]
+        cols: [10, 100, 1000]
+        threads: [1, 2, 5]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make all
+
+      - name: Run
+        run: |
+          THREADS=$((${{ matrix.rows }} * ${{ matrix.cols }} * ${{ matrix.threads }}))
+          ./movies \
+              -r ${{ matrix.rows }} \
+              -c ${{ matrix.cols }} \
+              -t "$THREADS"
+
+  AddressSanitizer:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make asan
+      - name: Run
+        run: ./movies
+
+  ThreadSanitizer:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make tsan
+      - name: Run
+        run: ./movies

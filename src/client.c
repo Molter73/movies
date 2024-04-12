@@ -28,9 +28,9 @@ client_t* client_new(movie_t* movie, int id) {
     return client;
 }
 
-bool client_start(client_t* client) {
+int client_start(client_t* client) {
     assert(client != NULL);
-    return pthread_create(&client->thread, NULL, (void* (*)(void*))client_run, &client->data) == 0;
+    return pthread_create(&client->thread, NULL, (void* (*)(void*))client_run, &client->data);
 }
 
 void client_free(client_t* client) {

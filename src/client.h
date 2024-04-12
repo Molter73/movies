@@ -21,7 +21,7 @@ typedef struct client_s {
 } client_t;
 
 client_t* client_new(movie_t* movie, int id);
-bool client_start(client_t* client);
+int client_start(client_t* client);
 void client_free(client_t* client);
 
 #endif

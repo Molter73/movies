@@ -24,6 +24,7 @@ tsan: $(TARGET)
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
+$(TARGET): CFLAGS += -O2
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS)
 

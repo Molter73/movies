@@ -52,8 +52,9 @@ int run(const options_t* opts) {
         }
 
         clients[i] = client;
-        if (!client_start(client)) {
-            fprintf(stderr, "Fallo al iniciar cliente %d\n", i);
+        int start_res = client_start(client);
+        if (start_res != 0) {
+            fprintf(stderr, "Fallo al iniciar cliente %d: %d\n", i, start_res);
             goto cleanup;
         }
     }

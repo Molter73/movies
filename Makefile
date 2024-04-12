@@ -1,6 +1,6 @@
 # Compilador y opciones de compilación
 CC = gcc
-CFLAGS = -I$(CURDIR)/src
+CFLAGS = -I$(CURDIR)/src -pthread
 
 # Nombres de archivos y carpetas
 TARGET = movies

@@ -2,7 +2,7 @@
 #define _DEFINITIONS_H_
 
 #define DEFAULT_COLUMNS (15)
-#define DEFAULT_ROWS (10)
+#define DEFAULT_ROWS    (10)
 #define DEFAULT_THREADS (DEFAULT_ROWS * DEFAULT_COLUMNS)
 
 #endif

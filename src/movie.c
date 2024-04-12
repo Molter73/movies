@@ -17,7 +17,7 @@ movie_t* movie_new(unsigned int cols, unsigned int rows) {
     // Inicializamos los asientos
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            seat_t* seat = &seats[i + j];
+            seat_t* seat = &seats[(i * rows) + j];
 
             seat->col      = j;
             seat->row      = i;
@@ -38,12 +38,11 @@ movie_t* movie_new(unsigned int cols, unsigned int rows) {
 bool movie_reserve_seat(movie_t* m, unsigned int col, unsigned int row, int id) {
     assert(m != NULL);
 
-    if (col >= m->nrows || row >= m->nrows) {
+    if (col >= m->ncols || row >= m->nrows) {
         return false;
     }
 
-    seat_t* seat = &m->seats[col + row];
-
+    seat_t* seat = &m->seats[(row * m->ncols) + col];
     if (seat->reserved) {
         return false;
     }

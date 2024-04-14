@@ -1,6 +1,6 @@
 # Compilador y opciones de compilación
 CC = gcc
-CFLAGS = -I$(CURDIR)/src
+CFLAGS = -I$(CURDIR)/src -pthread
 
 # Nombres de archivos y carpetas
 TARGET = movies
@@ -24,6 +24,7 @@ tsan: $(TARGET)
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
+$(TARGET): CFLAGS += -O2
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS)
 

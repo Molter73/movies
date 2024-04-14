@@ -1,9 +1,11 @@
+#include "client.h"
 #include "definitions.h"
 #include "movie.h"
 
 #include <assert.h>
 #include <bits/getopt_core.h>
 #include <linux/limits.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,6 +29,7 @@ void usage(char* prog) {
 
 int run(const options_t* opts) {
     assert(opts != NULL);
+    int res = -1;
 
     movie_t* movie = movie_new(opts->cols, opts->rows);
     if (movie == NULL) {
@@ -34,15 +37,49 @@ int run(const options_t* opts) {
         return -1;
     }
 
+    client_t** clients = (client_t**)calloc(opts->threads, sizeof(client_t*));
+    if (clients == NULL) {
+        fprintf(stderr, "Fallo al crear clientes\n");
+        goto cleanup;
+    }
+
+    // Creamos opts->threads clientes concurrentes.
+    for (int i = 0; i < opts->threads; i++) {
+        client_t* client = client_new(movie, i);
+        if (client == NULL) {
+            fprintf(stderr, "Fallo al crear cliente %d\n", i);
+            goto cleanup;
+        }
+
+        clients[i] = client;
+        int start_res = client_start(client);
+        if (start_res != 0) {
+            fprintf(stderr, "Fallo al iniciar cliente %d: %d\n", i, start_res);
+            goto cleanup;
+        }
+    }
+
+    // Esperamos a que todos los clientes finalicen.
+    for (int i = 0; i < opts->threads; i++) {
+        pthread_join(clients[i]->thread, NULL);
+    }
+
+    res = 0;
+
+cleanup:
+    for (int i = 0; i < opts->threads && clients[i] != NULL; i++) {
+        client_free(clients[i]);
+    }
+    free(clients);
     movie_free(movie);
-    return 0;
+    return res;
 }
 
 int main(int argc, char* argv[]) {
     options_t opts = {
-        .cols      = DEFAULT_COLUMNS,
-        .rows      = DEFAULT_ROWS,
-        .threads   = DEFAULT_THREADS,
+        .cols    = DEFAULT_COLUMNS,
+        .rows    = DEFAULT_ROWS,
+        .threads = DEFAULT_THREADS,
     };
     int opt = -1;
 

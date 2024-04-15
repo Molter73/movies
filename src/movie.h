@@ -1,7 +1,6 @@
 #ifndef _MOVIE_H_
 #define _MOVIE_H_
 
-#include <semaphore.h>
 #include <stdbool.h>
 
 typedef struct seat_s {
@@ -16,9 +15,6 @@ typedef struct movie_s {
     unsigned int nrows;
     unsigned int ncols;
     unsigned int vacancy;
-    sem_t global_lock; // Semáforo para bloqueo global
-    sem_t* row_locks;  // Array de semáforos para cada fila
-    sem_t* seat_locks; // Array de Semáforos, uno por asiento.
 } movie_t;
 
 movie_t* movie_new(unsigned int cols, unsigned int rows);

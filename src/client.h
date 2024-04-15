@@ -20,17 +20,10 @@ typedef struct client_s {
     client_res_t res;
 } client_t;
 
-// Mutex para control global
-pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-// Mutex para control por fila
-pthread_mutex_t* row_mutexes;
-
-// Mutex para control por asiento
-pthread_mutex_t* seat_mutexes;
-
-client_t* client_new(movie_t* movie, int id);
+client_t* client_new(movie_t* movie, int id, int method);
 int client_start(client_t* client);
 void client_free(client_t* client);
+void client_init_mutexes(int method, int nrows, int ncols);
+void client_destroy_mutexes(int method, int nrows, int ncols);
 
 #endif

@@ -115,7 +115,26 @@ client_t* client_new(movie_t* movie, int id, locking_method method) {
 // Inicia el hilo del cliente.
 int client_start(client_t* client) {
     assert(client != NULL);
-    return pthread_create(&client->thread, NULL, (void* (*)(void*))client_run, &client->data);
+    client_res_t* res;
+
+    if (pthread_create(&client->thread, NULL, (void* (*)(void*))client_run, &client->data) != 0) {
+        return -1;  // Fallo al iniciar el hilo
+    }
+    
+    if (pthread_join(client->thread, (void**)&res) != 0) {
+        return -1;  // Fallo al esperar por el hilo
+    }
+    
+    if (res != NULL) {
+        if (res->success) {
+            printf("Reserva exitosa.\n");
+        } else {
+            printf("Reserva fallida.\n");
+        }
+        client_res_free(res);
+    }
+
+    return 0;
 }
 
 // Libera la memoria ocupada por el cliente.

@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdio.h>
 
 // Diferentes niveles de bloqueo en reservas.
 static pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -12,84 +13,93 @@ static pthread_mutex_t* seat_mutexes;
 // Inicializa Datos del cliente
 void client_data_init(client_data_t* data, movie_t* movie, int id) {
     data->movie = movie;
-    data->id    = id;
+    data->id = id;
 }
 
-// Inicializa el resultado de la reserva.
-void client_res_init(client_res_t* res) {
+// Crea un nuevo resultado de reserva.
+client_res_t* client_res_new() {
+    client_res_t* res = (client_res_t*)malloc(sizeof(client_res_t));
+    if (res == NULL) {
+        return NULL;
+    }
     res->success = false;
+    return res;
+}
+
+// Libera un resultado de reserva.
+void client_res_free(client_res_t* res) {
+    free(res);
 }
 
 // Puntero a función. Se asignará a la función de ejecución que le corresponda.
-void* (*client_run)(void*) = NULL;
+client_res_t* (*client_run)(client_data_t*) = NULL;
 
 // Bloqueo Global
-void* client_global_mutex(void* arg) {
-    client_t* client = (client_t*)arg;
-    movie_t* movie   = client->data.movie;
-    int id           = client->data.id;
-    bool reserved    = false;
+client_res_t* client_global_mutex(client_data_t* data) {
+    movie_t* movie = data->movie;
+    int id = data->id;
 
-    pthread_mutex_lock(&global_mutex); // Bloqueo global
-    int rand_row = rand() % movie->nrows;
-    int rand_col = rand() % movie->ncols;
-    reserved     = movie_reserve_seat(movie, rand_col, rand_row, id);
+    static int seed = 0xdeadbeef;
+    int row = rand_r(&seed) % movie->nrows;
+    int col = rand_r(&seed) % movie->ncols;
+
+    pthread_mutex_lock(&global_mutex);
+    client_res_t* res = client_res_new();
+    res->success = movie_reserve_seat(movie, col, row, id);
     pthread_mutex_unlock(&global_mutex);
 
-    client->res.success = reserved;
-    return NULL;
+    return res;
 }
 
 // Bloqueo por Fila
-void* client_per_row_mutex(void* arg) {
-    client_t* client = (client_t*)arg;
-    movie_t* movie   = client->data.movie;
-    int id           = client->data.id;
-    bool reserved    = false;
-    int row          = id % movie->nrows;
+client_res_t* client_per_row_mutex(client_data_t* data) {
+    movie_t* movie = data->movie;
+    int id = data->id;
 
-    pthread_mutex_lock(&row_mutexes[row]); // Bloqueo de fila
-    int rand_col = rand() % movie->ncols;
-    reserved     = movie_reserve_seat(movie, rand_col, row, id);
+    static int seed = 0xdeadbeef;
+    int row = id % movie->nrows;
+    int col = rand_r(&seed) % movie->ncols;
+
+    pthread_mutex_lock(&row_mutexes[row]);
+    client_res_t* res = client_res_new();
+    res->success = movie_reserve_seat(movie, col, row, id);
     pthread_mutex_unlock(&row_mutexes[row]);
 
-    client->res.success = reserved;
-    return NULL;
+    return res;
 }
 
 // Bloqueo por Asiento
-void* client_per_seat_mutex(void* arg) {
-    client_t* client = (client_t*)arg;
-    movie_t* movie   = client->data.movie;
-    int id           = client->data.id;
-    bool reserved    = false;
+client_res_t* client_per_seat_mutex(client_data_t* data) {
+    movie_t* movie = data->movie;
+    int id = data->id;
 
-    int rand_index = rand() % (movie->nrows * movie->ncols);
-    int rand_row   = rand_index / movie->ncols;
-    int rand_col   = rand_index % movie->ncols;
+    static int seed = 0xdeadbeef;
+    int index = rand_r(&seed) % (movie->nrows * movie->ncols);
+    int row = index / movie->ncols;
+    int col = index % movie->ncols;
 
-    pthread_mutex_lock(&seat_mutexes[rand_index]); // Bloqueo de asiento
-    reserved = movie_reserve_seat(movie, rand_col, rand_row, id);
-    pthread_mutex_unlock(&seat_mutexes[rand_index]);
+    pthread_mutex_lock(&seat_mutexes[index]);
+    client_res_t* res = client_res_new();
+    res->success = movie_reserve_seat(movie, col, row, id);
+    pthread_mutex_unlock(&seat_mutexes[index]);
 
-    client->res.success = reserved;
-    return NULL;
+    return res;
 }
 
-client_t* client_new(movie_t* movie, int id, int method) {
+client_t* client_new(movie_t* movie, int id, locking_method method) {
     client_t* client = (client_t*)malloc(sizeof(client_t));
     if (client == NULL) {
         return NULL;
     }
 
     switch (method) {
-    case 0:
+    case GLOBAL:
         client_run = client_global_mutex;
         break;
-    case 1:
+    case ROW:
         client_run = client_per_row_mutex;
         break;
-    case 2:
+    case SEAT:
         client_run = client_per_seat_mutex;
         break;
     default:
@@ -99,61 +109,61 @@ client_t* client_new(movie_t* movie, int id, int method) {
     }
 
     client_data_init(&client->data, movie, id);
-    client_res_init(&client->res);
-
     return client;
 }
 
 // Inicia el hilo del cliente.
 int client_start(client_t* client) {
     assert(client != NULL);
-    return pthread_create(&client->thread, NULL, client_run, client);
+    return pthread_create(&client->thread, NULL, (void* (*)(void*))client_run, &client->data);
 }
 
 // Libera la memoria ocupada por el cliente.
 void client_free(client_t* client) {
-    if (client != NULL) {
         free(client);
-    }
 }
 
-// Inicializa los datos del cliente.
-void client_init(client_t* client, movie_t* movie, int id) {
-    assert(client != NULL);
-    assert(movie != NULL);
+bool client_init_mutexes(locking_method method, int nrows, int ncols) {
+    int nseats;
 
-    client_data_init(&client->data, movie, id);
-    client_res_init(&client->res);
-}
-
-// Inicializa los mutexes según el método de reserva seleccionado.
-void client_init_mutexes(int method, int nrows, int ncols) {
     switch (method) {
-    case 0:
+    case GLOBAL:
         pthread_mutex_init(&global_mutex, NULL);
         break;
-    case 1:
+    case ROW:
         row_mutexes = malloc(nrows * sizeof(pthread_mutex_t));
+        if (row_mutexes == NULL) {
+            perror("Failed to allocate memory for row mutexes");
+            return false;
+        }
         for (int i = 0; i < nrows; i++) {
             pthread_mutex_init(&row_mutexes[i], NULL);
         }
         break;
-    case 2:
-        seat_mutexes = malloc(nrows * ncols * sizeof(pthread_mutex_t));
-        for (int i = 0; i < nrows * ncols; i++) {
+    case SEAT:
+        nseats = nrows * ncols;
+        seat_mutexes = malloc(nseats * sizeof(pthread_mutex_t));
+        if (seat_mutexes == NULL) {
+            perror("Failed to allocate memory for seat mutexes");
+            return false;
+        }
+        for (int i = 0; i < nseats; i++) {
             pthread_mutex_init(&seat_mutexes[i], NULL);
         }
         break;
+    default:
+        perror("Invalid locking method specified");
+        return false;
     }
+    return true;
 }
 
 // Destruye los mutexes según el método de reserva seleccionado.
-void client_destroy_mutexes(int method, int nrows, int ncols) {
+void client_destroy_mutexes(locking_method method, int nrows, int ncols) {
     switch (method) {
-    case 0:
-        pthread_mutex_destroy(&global_mutex);
+    case GLOBAL:
         break;
-    case 1:
+    case ROW:
         if (row_mutexes != NULL) {
             for (int i = 0; i < nrows; i++) {
                 pthread_mutex_destroy(&row_mutexes[i]);
@@ -162,7 +172,7 @@ void client_destroy_mutexes(int method, int nrows, int ncols) {
             row_mutexes = NULL;
         }
         break;
-    case 2:
+    case SEAT:
         if (seat_mutexes != NULL) {
             for (int i = 0; i < nrows * ncols; i++) {
                 pthread_mutex_destroy(&seat_mutexes[i]);
@@ -171,5 +181,7 @@ void client_destroy_mutexes(int method, int nrows, int ncols) {
             seat_mutexes = NULL;
         }
         break;
+    default:
+        exit(EXIT_FAILURE);
     }
 }

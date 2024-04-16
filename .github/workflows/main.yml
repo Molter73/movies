@@ -38,7 +38,7 @@ jobs:
       - name: Run
         run: |
           THREADS=$((${{ matrix.rows }} * ${{ matrix.cols }} * ${{ matrix.threads }}))
-          ./movies \
+          ./movies -t 1000 \
               -r ${{ matrix.rows }} \
               -c ${{ matrix.cols }} \
               -t "$THREADS"

@@ -97,6 +97,7 @@ int main(int argc, char* argv[]) {
         .method  = 0                // Mutex Global por defecto
     };
     int opt = -1;
+    char *endptr;
 
     // Línea de comandos.
     while ((opt = getopt(argc, argv, "hc:r:t:m:")) != -1) {
@@ -114,10 +115,10 @@ int main(int argc, char* argv[]) {
             opts.threads = strtoul(optarg, NULL, 10);
             break;
         case 'm':
-            opts.method = atoi(optarg);
-            if (opts.method < 0 || opts.method > 2) {
-                fprintf(stderr, "Método de reserva inválido. Usando el método por defecto.\n");
-                opts.method = 0;
+            opts.method = strtol(optarg, &endptr, 10);
+            if (*endptr != '\0' || opts.method < 0 || opts.method > 2) {
+                fprintf(stderr, "Método de reserva inválido: '%s'.\n", optarg);
+                return -1;
             }
             break;
         default:

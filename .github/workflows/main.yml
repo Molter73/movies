@@ -38,7 +38,7 @@ jobs:
       - name: Run
         run: |
           THREADS=$((${{ matrix.rows }} * ${{ matrix.cols }} * ${{ matrix.threads }}))
-          ./movies -t 1000 \
+          ./movies \
               -r ${{ matrix.rows }} \
               -c ${{ matrix.cols }} \
               -t "$THREADS"
@@ -59,4 +59,4 @@ jobs:
       - name: Build
         run: make tsan
       - name: Run
-        run: ./movies
+        run: ./movies -t 1000

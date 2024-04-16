@@ -43,8 +43,12 @@ client_res_t* client_global_mutex(client_data_t* data) {
     int row = rand_r(&seed) % movie->nrows;
     int col = rand_r(&seed) % movie->ncols;
 
-    pthread_mutex_lock(&global_mutex);
     client_res_t* res = client_res_new();
+    if (res == NULL) {
+        return NULL;
+    }
+
+    pthread_mutex_lock(&global_mutex);
     res->success = movie_reserve_seat(movie, col, row, id);
     pthread_mutex_unlock(&global_mutex);
 
@@ -57,11 +61,15 @@ client_res_t* client_per_row_mutex(client_data_t* data) {
     int id = data->id;
 
     static int seed = 0xdeadbeef;
-    int row = id % movie->nrows;
+    int row = rand_r(&seed) % movie->nrows;
     int col = rand_r(&seed) % movie->ncols;
 
-    pthread_mutex_lock(&row_mutexes[row]);
     client_res_t* res = client_res_new();
+    if (res == NULL) {
+        return NULL;
+    }
+
+    pthread_mutex_lock(&row_mutexes[row]);
     res->success = movie_reserve_seat(movie, col, row, id);
     pthread_mutex_unlock(&row_mutexes[row]);
 
@@ -78,8 +86,12 @@ client_res_t* client_per_seat_mutex(client_data_t* data) {
     int row = index / movie->ncols;
     int col = index % movie->ncols;
 
-    pthread_mutex_lock(&seat_mutexes[index]);
     client_res_t* res = client_res_new();
+    if (res == NULL) {
+        return NULL;
+    }
+
+    pthread_mutex_lock(&seat_mutexes[index]);
     res->success = movie_reserve_seat(movie, col, row, id);
     pthread_mutex_unlock(&seat_mutexes[index]);
 
@@ -115,31 +127,12 @@ client_t* client_new(movie_t* movie, int id, locking_method method) {
 // Inicia el hilo del cliente.
 int client_start(client_t* client) {
     assert(client != NULL);
-    client_res_t* res;
-
-    if (pthread_create(&client->thread, NULL, (void* (*)(void*))client_run, &client->data) != 0) {
-        return -1;  // Fallo al iniciar el hilo
-    }
-    
-    if (pthread_join(client->thread, (void**)&res) != 0) {
-        return -1;  // Fallo al esperar por el hilo
-    }
-    
-    if (res != NULL) {
-        if (res->success) {
-            printf("Reserva exitosa.\n");
-        } else {
-            printf("Reserva fallida.\n");
-        }
-        client_res_free(res);
-    }
-
-    return 0;
+    return pthread_create(&client->thread, NULL, (void* (*)(void*))client_run, &client->data);
 }
 
 // Libera la memoria ocupada por el cliente.
 void client_free(client_t* client) {
-        free(client);
+    free(client);
 }
 
 bool client_init_mutexes(locking_method method, int nrows, int ncols) {

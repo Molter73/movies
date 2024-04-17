@@ -68,31 +68,30 @@ int run(const options_t* opts) {
 
     // Espera a que todos los hilos de los clientes terminen y maneja sus resultados.
     for (int i = 0; i < opts->threads; i++) {
-        client_res_t* res;
-        if (pthread_join(clients[i]->thread, (void**) &res) != 0) {
-            fprintf(stderr, "Fallo al esperar por el hilo del cliente %d\n", i);
-        } else {
-            if (res != NULL) {
-                printf("Cliente %d: %s\n", i, res->success ? "Reserva exitosa" : "Reserva fallida");
-                client_res_free(res);  // Liberar los resultados de cada cliente
-            }
+        client_res_t* res = NULL;
+        if (pthread_join(clients[i]->thread, (void**)&res) != 0) {
+            fprintf(stderr, "Fallo al esperar el hilo del cliente %d\n", i);
+            continue;
         }
-        client_free(clients[i]);  // Liberar recursos de cada cliente
+
+        if (res == NULL) {
+            fprintf(stderr, "Fallo al recibir resultado de cliente %d\n", i);
+            continue;
+        }
+
+        printf("Cliente %d: %s\n", i, res->success ? "Reserva exitosa" : "Reserva fallida");
+        client_res_free(res);
+    }
+
+// Limpia la memoria y recursos utilizados.
+cleanup:
+    for (int i = 0; i < opts->threads && clients[i] != NULL; i++) {
+        client_free(clients[i]);
     }
     free(clients);
     client_destroy_mutexes(opts->method, opts->rows, opts->cols);
     movie_free(movie);
     return 0;
-
-cleanup:
-    // Limpia la memoria y recursos utilizados.
-    for (int j = 0; j < opts->threads; j++) {
-        if (clients[j] != NULL) client_free(clients[j]);
-    }
-    free(clients);
-    client_destroy_mutexes(opts->method, opts->rows, opts->cols);
-    movie_free(movie);
-    return -1;
 }
 
 int main(int argc, char* argv[]) {

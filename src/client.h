@@ -29,6 +29,7 @@ typedef struct client_s {
 client_t* client_new(movie_t* movie, int id, locking_method method);
 int client_start(client_t* client);
 void client_free(client_t* client);
+void client_res_free(client_res_t* res);
 bool client_init_mutexes(locking_method method, int nrows, int ncols);
 void client_destroy_mutexes(locking_method method, int nrows, int ncols);
 

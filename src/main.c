@@ -32,8 +32,6 @@ void usage(char* prog) {
 // Función principal que ejecuta el programa.
 int run(const options_t* opts) {
     assert(opts != NULL); // Asegura que las opciones no sean NULL.
-    int res = -1;
-
     srand((unsigned)time(NULL)); // Inicializa la semilla
 
     // Crea la sala de cine con el número especificado de filas y columnas.
@@ -55,38 +53,46 @@ int run(const options_t* opts) {
         return -1;
     }
 
-    // Crea y ejecuta los hilos de los clientes.
+    // Inicializa y ejecuta todos los hilos de los clientes.
     for (int i = 0; i < opts->threads; i++) {
-        client_t* client = client_new(movie, i, opts->method);
-        if (client == NULL) {
+        clients[i] = client_new(movie, i, opts->method);
+        if (clients[i] == NULL) {
             fprintf(stderr, "Fallo al crear cliente %d\n", i);
             goto cleanup;
         }
-
-        clients[i]    = client;
-        int start_res = client_start(client);
-        if (start_res != 0) {
-            fprintf(stderr, "Fallo al iniciar cliente %d: %d\n", i, start_res);
+        if (client_start(clients[i]) != 0) {
+            fprintf(stderr, "Fallo al iniciar cliente %d\n", i);
             goto cleanup;
         }
     }
 
-    // Espera a que todos los hilos de los clientes terminen.
+    // Espera a que todos los hilos de los clientes terminen y maneja sus resultados.
     for (int i = 0; i < opts->threads; i++) {
-        pthread_join(clients[i]->thread, NULL);
-    }
-
-    res = 0;
-
-cleanup:
-    // Limpia la memoria y recursos utilizados.
-    for (int i = 0; i < opts->threads && clients[i] != NULL; i++) {
-        client_free(clients[i]);
+        client_res_t* res;
+        if (pthread_join(clients[i]->thread, (void**) &res) != 0) {
+            fprintf(stderr, "Fallo al esperar por el hilo del cliente %d\n", i);
+        } else {
+            if (res != NULL) {
+                printf("Cliente %d: %s\n", i, res->success ? "Reserva exitosa" : "Reserva fallida");
+                client_res_free(res);  // Liberar los resultados de cada cliente
+            }
+        }
+        client_free(clients[i]);  // Liberar recursos de cada cliente
     }
     free(clients);
     client_destroy_mutexes(opts->method, opts->rows, opts->cols);
     movie_free(movie);
-    return res;
+    return 0;
+
+cleanup:
+    // Limpia la memoria y recursos utilizados.
+    for (int j = 0; j < opts->threads; j++) {
+        if (clients[j] != NULL) client_free(clients[j]);
+    }
+    free(clients);
+    client_destroy_mutexes(opts->method, opts->rows, opts->cols);
+    movie_free(movie);
+    return -1;
 }
 
 int main(int argc, char* argv[]) {
@@ -94,7 +100,7 @@ int main(int argc, char* argv[]) {
         .cols    = DEFAULT_COLUMNS, // Columnas por defecto
         .rows    = DEFAULT_ROWS,    // Filas por defecto
         .threads = DEFAULT_THREADS, // Hilos por defecto
-        .method  = 0                // Mutex Global por defecto
+        .method  = 0               // Mutex Global por defecto
     };
     int opt = -1;
     char *endptr;

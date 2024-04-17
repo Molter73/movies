@@ -32,8 +32,8 @@ void usage(char* prog) {
 // Función principal que ejecuta el programa.
 int run(const options_t* opts) {
     assert(opts != NULL); // Asegura que las opciones no sean NULL.
+    int res = -1;
     srand((unsigned)time(NULL)); // Inicializa la semilla
-    int res = 0;
 
     // Crea la sala de cine con el número especificado de filas y columnas.
     movie_t* movie = movie_new(opts->cols, opts->rows);
@@ -81,6 +81,8 @@ int run(const options_t* opts) {
         printf("Cliente %d: %s\n", i, res->success ? "Reserva exitosa" : "Reserva fallida");
         client_res_free(res);
     }
+
+    res = 0;
 
 // Limpia la memoria y recursos utilizados.
 cleanup:

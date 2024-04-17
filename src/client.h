@@ -5,6 +5,12 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+typedef enum {
+    GLOBAL = 0,
+    ROW = 1,
+    SEAT = 2,
+} locking_method;
+
 typedef struct client_data_s {
     movie_t* movie;
     int id;
@@ -20,8 +26,11 @@ typedef struct client_s {
     client_res_t res;
 } client_t;
 
-client_t* client_new(movie_t* movie, int id);
+client_t* client_new(movie_t* movie, int id, locking_method method);
 int client_start(client_t* client);
 void client_free(client_t* client);
+void client_res_free(client_res_t* res);
+bool client_init_mutexes(locking_method method, int nrows, int ncols);
+void client_destroy_mutexes(locking_method method, int nrows, int ncols);
 
 #endif

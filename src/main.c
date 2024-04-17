@@ -33,6 +33,7 @@ void usage(char* prog) {
 int run(const options_t* opts) {
     assert(opts != NULL); // Asegura que las opciones no sean NULL.
     srand((unsigned)time(NULL)); // Inicializa la semilla
+    int res = 0;
 
     // Crea la sala de cine con el número especificado de filas y columnas.
     movie_t* movie = movie_new(opts->cols, opts->rows);
@@ -48,9 +49,7 @@ int run(const options_t* opts) {
     client_t** clients = (client_t**)calloc(opts->threads, sizeof(client_t*));
     if (clients == NULL) {
         fprintf(stderr, "Fallo al crear clientes\n");
-        client_destroy_mutexes(opts->method, opts->rows, opts->cols);
-        movie_free(movie);
-        return -1;
+        goto cleanup;
     }
 
     // Inicializa y ejecuta todos los hilos de los clientes.
@@ -91,7 +90,7 @@ cleanup:
     free(clients);
     client_destroy_mutexes(opts->method, opts->rows, opts->cols);
     movie_free(movie);
-    return 0;
+    return res;
 }
 
 int main(int argc, char* argv[]) {

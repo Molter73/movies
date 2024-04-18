@@ -14,6 +14,7 @@ jobs:
         rows: [10, 100, 1000]
         cols: [10, 100, 1000]
         threads: [1, 2, 5]
+        method: [0, 1, 2]
         # Excluimos combinaciones que generan demasiadas hebras
         exclude:
         - rows: 100
@@ -41,22 +42,31 @@ jobs:
           ./movies \
               -r ${{ matrix.rows }} \
               -c ${{ matrix.cols }} \
-              -t "$THREADS"
+              -t "$THREADS" \
+              -m ${{ matrix.method }}
 
   AddressSanitizer:
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        method: [0, 1, 2]
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: make asan
       - name: Run
-        run: ./movies
+        run: ./movies -m ${{ matrix.method }}
 
   ThreadSanitizer:
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        method: [0, 1, 2]
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: make tsan
       - name: Run
-        run: ./movies -t 1000
+        run: ./movies -t 1000 -m ${{ matrix.method }}

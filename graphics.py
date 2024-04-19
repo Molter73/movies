@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import re
 import sys
+import numpy as np
 
 def graphics(directorio):
     resultados = []
@@ -30,6 +31,11 @@ def graphics(directorio):
 
     # Graficamos
     plt.figure()
+    max_hilos = resultados_df['Hilos'].max()
+    min_hilos = resultados_df['Hilos'].min()
+    max_duracion = resultados_df['Duración Media'].max()
+    min_duracion = resultados_df['Duración Media'].min()
+
     for metodo in resultados_df['Método'].unique():
         df_metodo = resultados_df[resultados_df['Método'] == metodo]
         plt.plot(df_metodo['Hilos'], df_metodo['Duración Media'], label = f'Método {metodo}', marker='o')
@@ -38,6 +44,11 @@ def graphics(directorio):
     plt.xlabel('Número de Hilos')
     plt.ylabel('Duración Media (ns)')
     plt.legend()
+
+    num_ticks = 10  # Número de ticks
+    plt.xticks(ticks=np.linspace(min_hilos, max_hilos, num_ticks, dtype=int))
+    plt.yticks(ticks=np.linspace(min_duracion, max_duracion, num_ticks))
+
     plt.grid(True)
     plt.show()
 

@@ -1,22 +1,20 @@
 #include "client.h"
 #include "definitions.h"
 #include "movie.h"
+#include "stats.h"
 
 #include <assert.h>
 #include <bits/getopt_core.h>
+#include <errno.h>
 #include <linux/limits.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef struct options_s {
-    unsigned int cols;
-    unsigned int rows;
-    unsigned int threads;
-    int method; // Método de reserva
-} options_t;
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <time.h>
 
 // Función que muestra el uso del programa en la línea de comandos.
 void usage(char* prog) {
@@ -24,15 +22,21 @@ void usage(char* prog) {
     printf("FLAGS:\n");
     printf("-c\tNúmero de columnas en la sala de cine. Default: %d\n", DEFAULT_COLUMNS);
     printf("-h\tImprime este texto de ayuda\n");
+    printf("-m\tMétodo de reserva (0: global, 1: por fila, 2: por asiento). Default: 0\n");
+    printf("-o\tEscribe las salidas en el directorio especificado.\n\t\tPor defecto escribe en la salida estándar\n");
     printf("-r\tNúmero de filas en la sala de cine. Default: %d\n", DEFAULT_ROWS);
     printf("-t\tNúmero de hilos cliente a crear. Default: %d\n", DEFAULT_THREADS);
-    printf("-m\tMétodo de reserva (0: global, 1: por fila, 2: por asiento). Default: 0\n");
 }
 
 // Función principal que ejecuta el programa.
 int run(const options_t* opts) {
     assert(opts != NULL); // Asegura que las opciones no sean NULL.
     int res = -1;
+    struct timespec start;
+    struct timespec end;
+    global_stats_t global_stats = {
+        .seats = opts->cols * opts->rows,
+    };
     srand((unsigned)time(NULL)); // Inicializa la semilla
 
     // Crea la sala de cine con el número especificado de filas y columnas.
@@ -51,6 +55,14 @@ int run(const options_t* opts) {
         fprintf(stderr, "Fallo al crear clientes\n");
         goto cleanup;
     }
+
+    client_res_t** results = (client_res_t**)calloc(opts->threads, sizeof(client_res_t*));
+    if (results == NULL) {
+        fprintf(stderr, "Fallo al crear array de resultados\n");
+        goto cleanup;
+    }
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
     // Inicializa y ejecuta todos los hilos de los clientes.
     for (int i = 0; i < opts->threads; i++) {
@@ -78,19 +90,26 @@ int run(const options_t* opts) {
             continue;
         }
 
-        printf("Cliente %d: %s\n", i, res->success ? "Reserva exitosa" : "Reserva fallida");
-        client_res_free(res);
+        results[i] = res;
     }
 
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    global_stats.time_taken = get_time_diff(&start, &end);
+
+    dump_stats(opts, &global_stats, results);
     res = 0;
 
 // Limpia la memoria y recursos utilizados.
 cleanup:
-    for (int i = 0; i < opts->threads && clients[i] != NULL; i++) {
+    for (int i = 0; i < opts->threads; i++) {
         client_free(clients[i]);
+        client_res_free(results[i]);
     }
     free(clients);
+    free(results);
+
     client_destroy_mutexes(opts->method, opts->rows, opts->cols);
+
     movie_free(movie);
     return res;
 }
@@ -100,13 +119,15 @@ int main(int argc, char* argv[]) {
         .cols    = DEFAULT_COLUMNS, // Columnas por defecto
         .rows    = DEFAULT_ROWS,    // Filas por defecto
         .threads = DEFAULT_THREADS, // Hilos por defecto
-        .method  = 0               // Mutex Global por defecto
+        .method  = 0,               // Mutex Global por defecto
+        .output  = NULL             // Directorio de salida
     };
-    int opt = -1;
-    char *endptr;
+    int opt      = -1;
+    char* endptr = NULL;
+    struct stat buf;
 
     // Línea de comandos.
-    while ((opt = getopt(argc, argv, "hc:r:t:m:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:r:t:m:o:")) != -1) {
         switch (opt) {
         case 'h':
             usage(argv[0]);
@@ -124,6 +145,19 @@ int main(int argc, char* argv[]) {
             opts.method = strtol(optarg, &endptr, 10);
             if (*endptr != '\0' || opts.method < 0 || opts.method > 2) {
                 fprintf(stderr, "Método de reserva inválido: '%s'.\n", optarg);
+                return -1;
+            }
+            break;
+        case 'o':
+            opts.output = optarg;
+            if (stat(opts.output, &buf) != 0) {
+                fprintf(stderr, "Fallo en obtener información de directorio de salida: (%d) %s\n", errno,
+                        strerror(errno));
+                return -1;
+            }
+
+            if (!S_ISDIR(buf.st_mode)) {
+                fprintf(stderr, "'%s' no es un directorio", opts.output);
                 return -1;
             }
             break;

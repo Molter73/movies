@@ -4,6 +4,7 @@
 #include "movie.h"
 #include <pthread.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef enum {
     GLOBAL = 0,
@@ -17,6 +18,7 @@ typedef struct client_data_s {
 } client_data_t;
 
 typedef struct client_res_s {
+    uint64_t duration;
     bool success;
 } client_res_t;
 

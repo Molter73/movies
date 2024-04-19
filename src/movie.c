@@ -30,7 +30,6 @@ movie_t* movie_new(unsigned int cols, unsigned int rows) {
     movie->seats   = seats;
     movie->ncols   = cols;
     movie->nrows   = rows;
-    movie->vacancy = cols * rows;
 
     return movie;
 }
@@ -50,14 +49,8 @@ bool movie_reserve_seat(movie_t* m, unsigned int col, unsigned int row, int id) 
 
     seat->reserved = true;
     seat->user_id  = id;
-    m->vacancy--;
 
     return true;
-}
-
-// Comprueba si hay asientos disponibles.
-bool movie_has_vacants(const movie_t* m) {
-    return m->vacancy != 0;
 }
 
 // Libera la memoria asociada con la sala de cine.

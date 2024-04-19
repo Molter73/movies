@@ -17,6 +17,7 @@ void dump_thread_stats(const options_t* opts, const global_stats_t* gs, client_r
     FILE* output_file = stdout;
     char path[PATH_MAX];
 
+    // Genera Threads_Fila_Columnas_Método
     snprintf(path, PATH_MAX, "%s/threads_%d_%d_%d_%d.csv", opts->output, opts->threads, opts->rows, opts->cols, opts->method);
     output_file = fopen(path, "w");
     if (output_file == NULL) {

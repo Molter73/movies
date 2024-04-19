@@ -1,9 +1,10 @@
 #include "client.h"
+#include "stats.h"
 #include <assert.h>
 #include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <stdio.h>
 
 // Diferentes niveles de bloqueo en reservas.
 static pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -13,7 +14,7 @@ static pthread_mutex_t* seat_mutexes;
 // Inicializa Datos del cliente
 void client_data_init(client_data_t* data, movie_t* movie, int id) {
     data->movie = movie;
-    data->id = id;
+    data->id    = id;
 }
 
 // Crea un nuevo resultado de reserva.
@@ -36,64 +37,82 @@ client_res_t* (*client_run)(client_data_t*) = NULL;
 
 // Bloqueo Global
 client_res_t* client_global_mutex(client_data_t* data) {
-    movie_t* movie = data->movie;
-    int id = data->id;
-
     static int seed = 0xdeadbeef;
+    movie_t* movie  = data->movie;
+
     int row = rand_r(&seed) % movie->nrows;
     int col = rand_r(&seed) % movie->ncols;
+
+    struct timespec start;
+    struct timespec end;
 
     client_res_t* res = client_res_new();
     if (res == NULL) {
         return NULL;
     }
 
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     pthread_mutex_lock(&global_mutex);
-    res->success = movie_reserve_seat(movie, col, row, id);
+    res->success = movie_reserve_seat(movie, col, row, data->id);
     pthread_mutex_unlock(&global_mutex);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+
+    res->duration = get_time_diff(&start, &end);
 
     return res;
 }
 
 // Bloqueo por Fila
 client_res_t* client_per_row_mutex(client_data_t* data) {
-    movie_t* movie = data->movie;
-    int id = data->id;
-
     static int seed = 0xdeadbeef;
+    movie_t* movie  = data->movie;
+
     int row = rand_r(&seed) % movie->nrows;
     int col = rand_r(&seed) % movie->ncols;
+
+    struct timespec start;
+    struct timespec end;
 
     client_res_t* res = client_res_new();
     if (res == NULL) {
         return NULL;
     }
 
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     pthread_mutex_lock(&row_mutexes[row]);
-    res->success = movie_reserve_seat(movie, col, row, id);
+    res->success = movie_reserve_seat(movie, col, row, data->id);
     pthread_mutex_unlock(&row_mutexes[row]);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+
+    res->duration = get_time_diff(&start, &end);
 
     return res;
 }
 
 // Bloqueo por Asiento
 client_res_t* client_per_seat_mutex(client_data_t* data) {
-    movie_t* movie = data->movie;
-    int id = data->id;
-
     static int seed = 0xdeadbeef;
+    movie_t* movie  = data->movie;
+
     int index = rand_r(&seed) % (movie->nrows * movie->ncols);
-    int row = index / movie->ncols;
-    int col = index % movie->ncols;
+    int row   = index / movie->ncols;
+    int col   = index % movie->ncols;
+
+    struct timespec start;
+    struct timespec end;
 
     client_res_t* res = client_res_new();
     if (res == NULL) {
         return NULL;
     }
 
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     pthread_mutex_lock(&seat_mutexes[index]);
-    res->success = movie_reserve_seat(movie, col, row, id);
+    res->success = movie_reserve_seat(movie, col, row, data->id);
     pthread_mutex_unlock(&seat_mutexes[index]);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+
+    res->duration = get_time_diff(&start, &end);
 
     return res;
 }
@@ -153,7 +172,7 @@ bool client_init_mutexes(locking_method method, int nrows, int ncols) {
         }
         break;
     case SEAT:
-        nseats = nrows * ncols;
+        nseats       = nrows * ncols;
         seat_mutexes = malloc(nseats * sizeof(pthread_mutex_t));
         if (seat_mutexes == NULL) {
             perror("Failed to allocate memory for seat mutexes");

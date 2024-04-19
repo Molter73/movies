@@ -2,7 +2,6 @@
 #define _MOVIE_H_
 
 #include <stdbool.h>
-#include <stdatomic.h>
 
 typedef struct seat_s {
     unsigned int row;
@@ -15,12 +14,10 @@ typedef struct movie_s {
     seat_t* seats;
     unsigned int nrows;
     unsigned int ncols;
-    atomic_uint vacancy;
 } movie_t;
 
 movie_t* movie_new(unsigned int cols, unsigned int rows);
 bool movie_reserve_seat(movie_t* m, unsigned int col, unsigned int row, int id);
-bool movie_has_vacants(const movie_t* m);
 void movie_free(movie_t* m);
 
 #endif

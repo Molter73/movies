@@ -38,12 +38,19 @@ jobs:
 
       - name: Run
         run: |
+          mkdir outputs/
           THREADS=$((${{ matrix.rows }} * ${{ matrix.cols }} * ${{ matrix.threads }}))
           ./movies \
               -r ${{ matrix.rows }} \
               -c ${{ matrix.cols }} \
               -t "$THREADS" \
-              -m ${{ matrix.method }}
+              -m ${{ matrix.method }} \
+              -o outputs/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stats-${{ matrix.threads }}-${{ matrix.rows }}-${{ matrix.cols }}-${{ matrix.method }}
+          path: outputs/
 
   AddressSanitizer:
     runs-on: ubuntu-22.04

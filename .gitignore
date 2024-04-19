@@ -3,6 +3,7 @@
 # C output objects
 *.o
 movies
+outputs/
 
 # Compilation database
 compile_commands.json

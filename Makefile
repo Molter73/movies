@@ -10,6 +10,7 @@ OBJS = $(SRCS:.c=.o)
 DEPS = $(wildcard $(SRC_DIR)/*.h)
 
 # Reglas
+all: CFLAGS += -O2 -DNDEBUG
 all: $(TARGET)
 
 debug: CFLAGS += -g
@@ -24,11 +25,10 @@ tsan: $(TARGET)
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-$(TARGET): CFLAGS += -O2
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
 .PHONY: clean
 clean:
 	rm -f $(SRC_DIR)/*.o $(MODULES_DIR)/*.o $(TARGET)
-	rm -rf $(SRC_DIR)/outputs/
+	rm -rf $(CURDIR)/outputs/

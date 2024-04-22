@@ -13,3 +13,6 @@ compile_commands.json
 
 # VS Code
 .vscode/
+
+# Results
+results

@@ -62,8 +62,14 @@ jobs:
           path: /tmp/outputs
           merge-multiple: true
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
       - run: |
           mkdir outputs
+          pip install -r scripts/requirements.txt
           python3 scripts/graphics.py /tmp/outputs -o outputs
 
       - uses: actions/upload-artifact@v4

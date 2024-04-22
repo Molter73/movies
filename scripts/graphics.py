@@ -38,7 +38,7 @@ def read_data(directorio, exclude_method):
                 'Columnas': int(match.group(3)),
                 'Duración Media': df['Duracion'].mean(),
                 'Método': METHODS[method],
-                'Carga': len(match.groups()) == 6,
+                'Carga': match.group(5) is not None,
             }
 
     return resultados.sort_values(by=['Hilos', 'Método'])

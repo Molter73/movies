@@ -25,6 +25,7 @@ void usage(char* prog) {
     printf("-m\tMétodo de reserva (0: global, 1: por fila, 2: por asiento). Default: 0\n");
     printf("-o\tEscribe las salidas en el directorio especificado.\n\t\tPor defecto escribe en la salida estándar\n");
     printf("-r\tNúmero de filas en la sala de cine. Default: %d\n", DEFAULT_ROWS);
+    printf("-s\tSimular trabajo adicional en la reserva de asientos.\n");
     printf("-t\tNúmero de hilos cliente a crear. Default: %d\n", DEFAULT_THREADS);
 }
 
@@ -40,7 +41,7 @@ int run(const options_t* opts) {
     srand((unsigned)time(NULL)); // Inicializa la semilla
 
     // Crea la sala de cine con el número especificado de filas y columnas.
-    movie_t* movie = movie_new(opts->cols, opts->rows);
+    movie_t* movie = movie_new(opts->cols, opts->rows, opts->synthetic_load);
     if (movie == NULL) {
         fprintf(stderr, "Fallo al crear la sala de cine\n");
         return -1;
@@ -71,8 +72,10 @@ int run(const options_t* opts) {
             fprintf(stderr, "Fallo al crear cliente %d\n", i);
             goto cleanup;
         }
-        if (client_start(clients[i]) != 0) {
-            fprintf(stderr, "Fallo al iniciar cliente %d\n", i);
+
+        int err = client_start(clients[i]);
+        if (err != 0) {
+            fprintf(stderr, "Fallo al iniciar cliente %d: (%d) %s\n", i, err, strerror(err));
             goto cleanup;
         }
     }
@@ -116,18 +119,19 @@ cleanup:
 
 int main(int argc, char* argv[]) {
     options_t opts = {
-        .cols    = DEFAULT_COLUMNS, // Columnas por defecto
-        .rows    = DEFAULT_ROWS,    // Filas por defecto
-        .threads = DEFAULT_THREADS, // Hilos por defecto
-        .method  = 0,               // Mutex Global por defecto
-        .output  = NULL             // Directorio de salida
+        .cols           = DEFAULT_COLUMNS, // Columnas por defecto
+        .rows           = DEFAULT_ROWS,    // Filas por defecto
+        .threads        = DEFAULT_THREADS, // Hilos por defecto
+        .method         = 0,               // Mutex Global por defecto
+        .output         = NULL,            // Directorio de salida
+        .synthetic_load = false,
     };
     int opt      = -1;
     char* endptr = NULL;
     struct stat buf;
 
     // Línea de comandos.
-    while ((opt = getopt(argc, argv, "hc:r:t:m:o:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:r:t:m:o:s")) != -1) {
         switch (opt) {
         case 'h':
             usage(argv[0]);
@@ -160,6 +164,9 @@ int main(int argc, char* argv[]) {
                 fprintf(stderr, "'%s' no es un directorio", opts.output);
                 return -1;
             }
+            break;
+        case 's':
+            opts.synthetic_load = true;
             break;
         default:
             usage(argv[0]);

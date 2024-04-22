@@ -12,18 +12,24 @@ METHODS = [
 ]
 
 
-def read_data(directorio):
+def read_data(directorio, exclude_method):
     resultados = pd.DataFrame(columns=[
         'Hilos',
         'Método',
         'Duración Media',
         'Columnas',
-        'Filas'
+        'Filas',
+        'Carga',
     ])
     for archivo in os.listdir(directorio):
         # Verificamos que el nombre del archivo cumpla con el patrón esperado
-        match = re.match(r'^threads_(\d+)_(\d+)_(\d+)_(\d+)\.csv$', archivo)
+        match = re.match(
+            r'^threads_(\d+)_(\d+)_(\d+)_(\d+)(_loaded)?\.csv$', archivo)
         if match:
+            method = int(match.group(4))
+            if method in exclude_method:
+                continue
+
             ruta_completa = os.path.join(directorio, archivo)
             df = pd.read_csv(ruta_completa)
             resultados.loc[len(resultados.index)] = {
@@ -31,13 +37,14 @@ def read_data(directorio):
                 'Filas': int(match.group(2)),
                 'Columnas': int(match.group(3)),
                 'Duración Media': df['Duracion'].mean(),
-                'Método': METHODS[int(match.group(4))],
+                'Método': METHODS[method],
+                'Carga': len(match.groups()) == 6,
             }
 
     return resultados.sort_values(by=['Hilos', 'Método'])
 
 
-def graphic(df, rows, cols, output_dir=None):
+def graphic(df, rows, cols, load, output_dir=None):
     plt.figure()
 
     # Obtenemos valores máximos y mínimos para los ejes
@@ -70,20 +77,20 @@ def graphic(df, rows, cols, output_dir=None):
         plt.show()
     else:
         path_completo = os.path.join(
-            output_dir, f"Resultado_{rows}_{cols}.png"
+            output_dir,
+            f"Resultado_{rows}_{cols}{'_loaded' if load else ''}.png"
         )
         plt.savefig(path_completo)
         plt.close()
 
 
 def graphics(df, output_dir=None):
-    for i, j in df.groupby(['Filas', 'Columnas']):
-        graphic(j, i[0], i[1], output_dir)
+    for i, j in df.groupby(['Filas', 'Columnas', 'Carga']):
+        graphic(j, i[0], i[1], i[2], output_dir)
     return
 
 
 if __name__ == "__main__":
-
     # Configuramos el parser de argumentos
     parser = argparse.ArgumentParser(
         description='Procesa archivos CSV para generar gráficas.')
@@ -92,8 +99,10 @@ if __name__ == "__main__":
                         )
     parser.add_argument('--output_dir', '-o', type=str, default=None,
                         help='Directorio para guardar los resultados')
+    parser.add_argument('--exclude-method', '-e', action='append', type=int,
+                        default=[], help='Excluir métodos del gráfico final')
     args = parser.parse_args()
 
     # Leemos los datos y generamos la gráfica
-    resultados_df = read_data(args.directorio)
+    resultados_df = read_data(args.directorio, args.exclude_method)
     graphics(resultados_df, args.output_dir)

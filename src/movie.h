@@ -14,9 +14,10 @@ typedef struct movie_s {
     seat_t* seats;
     unsigned int nrows;
     unsigned int ncols;
+    bool synthetic_load;
 } movie_t;
 
-movie_t* movie_new(unsigned int cols, unsigned int rows);
+movie_t* movie_new(unsigned int cols, unsigned int rows, bool synthetic_load);
 bool movie_reserve_seat(movie_t* m, unsigned int col, unsigned int row, int id);
 void movie_free(movie_t* m);
 

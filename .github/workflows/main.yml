@@ -15,6 +15,7 @@ jobs:
         cols: [10, 100, 1000]
         threads: [1, 2, 5]
         method: [0, 1, 2]
+        load: ["", "-s"]
         # Excluimos combinaciones que generan demasiadas hebras
         exclude:
         - rows: 100
@@ -31,6 +32,14 @@ jobs:
           threads: 5
         - rows: 1000
           cols: 1000
+        - rows: 100
+          cols: 1000
+          threads: 1
+          load: '-s'
+        - rows: 1000
+          cols: 100
+          threads: 1
+          load: '-s'
     steps:
       - uses: actions/checkout@v4
       - name: Build
@@ -45,12 +54,47 @@ jobs:
               -c ${{ matrix.cols }} \
               -t "$THREADS" \
               -m ${{ matrix.method }} \
+              ${{ matrix.load }} \
               -o outputs/
 
       - uses: actions/upload-artifact@v4
         with:
-          name: stats-${{ matrix.threads }}-${{ matrix.rows }}-${{ matrix.cols }}-${{ matrix.method }}
+          name: stats-${{ matrix.threads }}-${{ matrix.rows }}-${{ matrix.cols }}-${{ matrix.method }}${{ matrix.load }}
           path: outputs/
+
+  plot-graphs:
+    runs-on: ubuntu-22.04
+    needs: build-and-run
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/outputs
+          merge-multiple: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - run: |
+          mkdir outputs
+          pip install -r scripts/requirements.txt
+          python3 scripts/graphics.py /tmp/outputs -o outputs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graphs
+          path: outputs/
+
+      - run: |
+          mkdir outputs-filtered
+          python3 scripts/graphics.py /tmp/outputs -o outputs-filtered -e 0
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graphs-filtered
+          path: outputs-filtered/
 
   AddressSanitizer:
     runs-on: ubuntu-22.04

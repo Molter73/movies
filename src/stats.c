@@ -18,7 +18,8 @@ void dump_thread_stats(const options_t* opts, const global_stats_t* gs, client_r
     char path[PATH_MAX];
 
     // Genera Threads_Fila_Columnas_Método
-    snprintf(path, PATH_MAX, "%s/threads_%d_%d_%d_%d.csv", opts->output, opts->threads, opts->rows, opts->cols, opts->method);
+    snprintf(path, PATH_MAX, "%s/threads_%d_%d_%d_%d%s.csv", opts->output, opts->threads, opts->rows, opts->cols,
+             opts->method, opts->synthetic_load ? "_loaded" : "");
     output_file = fopen(path, "w");
     if (output_file == NULL) {
         fprintf(stderr, "Fallo al crear archivo de salida de hilos %s\n", path);
@@ -46,8 +47,8 @@ void dump_global_stats(const options_t* opts, const global_stats_t* gs, client_r
     unsigned int successes = 0;
 
     if (opts->output != NULL) {
-        snprintf(path, PATH_MAX, "%s/global_stats_%d_%d_%d_%d.csv", opts->output, opts->threads, opts->rows, opts->cols,
-                 opts->method);
+        snprintf(path, PATH_MAX, "%s/global_stats_%d_%d_%d_%d%s.csv", opts->output, opts->threads, opts->rows,
+                 opts->cols, opts->method, opts->synthetic_load ? "_loaded" : "");
         output_file = fopen(path, "w");
         if (output_file == NULL) {
             fprintf(stderr, "Fallo al crear archivo de salida %s\n", path);

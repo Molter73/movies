@@ -32,6 +32,14 @@ jobs:
           threads: 5
         - rows: 1000
           cols: 1000
+        - rows: 100
+          cols: 1000
+          threads: 1
+          load: '-s'
+        - rows: 1000
+          cols: 100
+          threads: 1
+          load: '-s'
     steps:
       - uses: actions/checkout@v4
       - name: Build

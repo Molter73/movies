@@ -52,6 +52,25 @@ jobs:
           name: stats-${{ matrix.threads }}-${{ matrix.rows }}-${{ matrix.cols }}-${{ matrix.method }}
           path: outputs/
 
+  plot-graphs:
+    runs-on: ubuntu-22.04
+    needs: build-and-run
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/outputs
+          merge-multiple: true
+
+      - run: |
+          mkdir outputs
+          python3 scripts/graphics.py /tmp/outputs -o outputs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graphs
+          path: outputs/
+
   AddressSanitizer:
     runs-on: ubuntu-22.04
     strategy:

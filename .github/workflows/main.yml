@@ -15,6 +15,7 @@ jobs:
         cols: [10, 100, 1000]
         threads: [1, 2, 5]
         method: [0, 1, 2]
+        load: ["", "-s"]
         # Excluimos combinaciones que generan demasiadas hebras
         exclude:
         - rows: 100
@@ -45,11 +46,12 @@ jobs:
               -c ${{ matrix.cols }} \
               -t "$THREADS" \
               -m ${{ matrix.method }} \
+              ${{ matrix.load }} \
               -o outputs/
 
       - uses: actions/upload-artifact@v4
         with:
-          name: stats-${{ matrix.threads }}-${{ matrix.rows }}-${{ matrix.cols }}-${{ matrix.method }}
+          name: stats-${{ matrix.threads }}-${{ matrix.rows }}-${{ matrix.cols }}-${{ matrix.method }}${{ matrix.load }}
           path: outputs/
 
   plot-graphs:
@@ -76,6 +78,15 @@ jobs:
         with:
           name: graphs
           path: outputs/
+
+      - run: |
+          mkdir outputs-filtered
+          python3 scripts/graphics.py /tmp/outputs -o outputs-filtered -e 0
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graphs-filtered
+          path: outputs-filtered/
 
   AddressSanitizer:
     runs-on: ubuntu-22.04
